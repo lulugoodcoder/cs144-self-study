@@ -10,6 +10,7 @@ ByteStream::ByteStream( uint64_t capacity ) : capacity_( capacity ), usedCapacit
 // Push data to stream, but only as much as available capacity allows.
 void Writer::push( string data )
 {  
+  
   uint64_t leftCap = capacity_ - usedCapacity_;
   if (leftCap > data.size()) {
     datas_ += data;
@@ -68,7 +69,7 @@ void Reader::pop( uint64_t len )
 
 // Is the stream finished (closed and fully popped)?
 bool Reader::is_finished() const
-{
+{ 
   return usedCapacity_ == 0  && close_ ;
 }
 
