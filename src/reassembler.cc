@@ -2,11 +2,13 @@
 #include "debug.hh"
 #include <string>
 #include <map>
+#include <iostream>
 
 using namespace std;
 
 void Reassembler::insert( uint64_t first_index, string data, bool is_last_substring )
 {    
+ 
     if (is_last_substring) {
         last_idx_ = first_index + data.size();
         last_string_received_ = true;
@@ -49,36 +51,38 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
 
         // Find first segment at or after curr_pos
         auto it = segments_.lower_bound(curr_pos);
-        
-         // Check if curr_pos exactly matches an existing segment start
-        if (it != segments_.end() && it->first == curr_pos) {
-        // Skip past this entire segment
-        i += it->second.size();
-        continue;
-       }
-        // Check if curr_pos is inside previous segment
+
+        // Check if curr_pos is inside a previous segment
         if (it != segments_.begin()) {
             auto prev = std::prev(it);
-            if (curr_pos < prev->second.size() + prev->first) {
-                // Skip to end of previous segment
-                i += (prev->second.size() + prev->first  - curr_pos);
+            uint64_t prev_end = prev->first + prev->second.size();
+            if (curr_pos < prev_end) {
+                // Skip the overlapping part
+                uint64_t skip = prev_end - curr_pos;
+                i += skip;
                 continue;
             }
         }
-       
-        // Find end position (either next segment or end of data)
+
+        // Check if curr_pos exactly matches an existing segment start
+        if (it != segments_.end() && it->first == curr_pos) {
+            // Skip past this entire segment
+            i += it->second.size();
+            continue;
+        }
+
+        // Find end position (either next segment start or end of data)
         uint64_t end_pos = first_index + data.size();
         if (it != segments_.end() && it->first < end_pos) {
             end_pos = it->first;
         }
 
-        // Insert chunk
+        // Insert non-overlapping chunk
         size_t len = end_pos - curr_pos;
         segments_[curr_pos] = data.substr(i, len);
         storedBytes_ += len;
         i += len;
-    }
-
+    }    
     
     // push all segment that can be pushed 
     while (segments_.find(expected_idx_) != segments_.end()) {
@@ -89,7 +93,6 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
         if (writer.available_capacity() > 0) {
             size_t cap = writer.available_capacity();
             size_t size = std::min(cap, newData.size());
-            
             writer.push(newData.substr(0, size));
             expected_idx_ += size;
             
@@ -107,6 +110,7 @@ void Reassembler::insert( uint64_t first_index, string data, bool is_last_substr
     if (last_string_received_ && expected_idx_ == last_idx_) {
         writer.close();
     }
+    std::cout << "expected_idx_" << expected_idx_ << std::endl;
 }
 
 // How many bytes are stored in the Reassembler itself?

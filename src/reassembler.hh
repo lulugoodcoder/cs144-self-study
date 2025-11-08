@@ -43,6 +43,10 @@ public:
 
   // Access output stream writer, but const-only (can't write from outside)
   const Writer& writer() const { return output_.writer(); }
+  
+  uint64_t getNextId() const { return expected_idx_; }
+
+  void setNextId(uint64_t expected) { expected_idx_ = expected; }
 
 private:
   ByteStream output_;
