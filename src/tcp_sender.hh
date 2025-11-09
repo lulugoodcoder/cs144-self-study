@@ -5,14 +5,14 @@
 #include "tcp_sender_message.hh"
 
 #include <functional>
-
+#include <map>
 class TCPSender
 {
 public:
   /* Construct TCP sender with given default Retransmission Timeout and possible ISN */
   TCPSender( ByteStream&& input, Wrap32 isn, uint64_t initial_RTO_ms )
-    : input_( std::move( input ) ), isn_( isn ), initial_RTO_ms_( initial_RTO_ms )
-  {}
+    : input_( std::move( input ) ), isn_( isn ), sent_(0), initial_RTO_ms_( initial_RTO_ms ), cur_RTO_ms_(initial_RTO_ms_), 
+      SYN_sent_(false),FIN_sent_(false), oldest_ms_since_last_tick(0), window_size(0), consecutive(0), advertised_window_size_(1), pendings({}) {}
 
   /* Generate an empty TCPSenderMessage */
   TCPSenderMessage make_empty_message() const;
@@ -37,9 +37,24 @@ public:
   Writer& writer() { return input_.writer(); }
 
 private:
+  struct Wrap32Less {
+    public:
+    bool operator()(const Wrap32 left, const Wrap32 right) const {
+        return left.get_raw_value() < right.get_raw_value();
+    }
+  };
   Reader& reader() { return input_.reader(); }
-
+  
   ByteStream input_;
   Wrap32 isn_;
+  uint64_t sent_;
   uint64_t initial_RTO_ms_;
+  uint64_t cur_RTO_ms_;
+  bool SYN_sent_;
+  bool FIN_sent_;
+  uint64_t oldest_ms_since_last_tick;
+  uint16_t window_size;
+  uint16_t consecutive;
+  uint16_t advertised_window_size_;
+  std::map<uint64_t, TCPSenderMessage> pendings; 
 };
